@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Uni Platform Receiver</title>
+  <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  
+  <style>
+    /* DESIGNER SECTION: Customize the UI vibe */
+    body {
+      margin: 0;
+      background-color: black;
+      overflow: hidden;
+    }
+
+    cast-media-player {
+      width: 100vw;
+      height: 100vh;
+      /* Customize progress bar color to match your app's brand */
+      --cast-media-player-progress-bar-color: #00ffcc; 
+    }
+
+    #debug-overlay {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: monospace;
+      font-size: 14px;
+      z-index: 10;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="debug-overlay">Receiver Initializing...</div>
+  
+  <cast-media-player></cast-media-player>
+
+  <script>
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const playerManager = context.getPlayerManager();
+    const debugElement = document.getElementById('debug-overlay');
+
+    // Monitor playback state for debugging
+    playerManager.addEventListener(
+      cast.framework.events.EventType.PLAYER_STATE_CHANGED, (event) => {
+        debugElement.innerText = "Status: " + event.value;
+      }
+    );
+
+    // INTERCEPTOR: This is where you'd handle specific logic for your videos
+    playerManager.setMessageInterceptor(
+      cast.framework.messages.MessageType.LOAD,
+      loadRequestData => {
+        console.log("Loading metadata:", loadRequestData.media.metadata);
+        return loadRequestData;
+      }
+    );
+
+    // Start the Cast Receiver
+    context.start();
+  </script>
+</body>
+</html>
