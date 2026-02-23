@@ -8,16 +8,59 @@ const sendersInfo = document.getElementById('senders-info');
 const senderCount = document.getElementById('sender-count');
 const toastEl = document.getElementById('toast');
 
+// HELPER FUNCTIONS
+
+    function log(msg) {
+        console.log('[RECEIVER] ' + msg);
+        debugLog.innerText = msg;
+    }
+
+    function showToast(message, duration) {
+        duration = duration || 4000;
+        toastEl.innerText = message;
+        toastEl.classList.add('show');
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function() {
+            toastEl.classList.remove('show');
+        }, duration);
+    }
+
+    function updateSenderUI() {
+        var senders = context.getSenders();
+        var count = senders.length;
+        if (count > 0) {
+            senderCount.innerHTML = count === 1 ? '1 device connected' : count + ' devices connected';
+            sendersInfo.classList.add('visible');
+            statusMsg.innerText = 'Connected';
+        } else {
+            sendersInfo.classList.remove('visible');
+            senderCount.innerHTML = '';
+            statusMsg.innerText = 'Ready to Cast';
+        }
+    }
+
+    function broadcastStatus(eventType, extra) {
+        var senders = context.getSenders();
+        var status = {
+            type: 'STATUS_UPDATE',
+            event: eventType,
+            senderCount: senders.length,
+            senders: senders.map(function(s) { return s.id; }),
+            timestamp: Date.now()
+        };
+        if (extra) Object.assign(status, extra);
+
+        try {
+            context.sendCustomMessage(CUSTOM_NAMESPACE, undefined, status);
+        } catch (e) {
+            console.warn('[RECEIVER] Broadcast failed:', e);
+        }
+    }
+
 // --- 0. INITIALIZATION ---
 const context = cast.framework.CastReceiverContext.getInstance();
 const playerManager = context.getPlayerManager();
 const playbackConfig = new cast.framework.PlaybackConfig();
-
-
-// Example of modifying the manifest request to include credentials (e.g. cookies) for CORS requests
-playbackConfig.manifestRequestHandler = requestInfo => {
-  requestInfo.withCredentials = true;
-};
 
 playerManager.setMessageInterceptor(
     cast.framework.messages.MessageType.LOAD, loadRequestData => {
@@ -71,69 +114,7 @@ context.addEventListener(
 playerManager.setSupportedMediaCommands(cast.framework.messages.Command.SEEK |
 cast.framework.messages.Command.PAUSE);
 
-context.start({
-    playbackConfig: playbackConfig,
-    playerManager: playerManager
-});
-
-
-    // const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
-    // cast.framework.CastReceiverContext.getInstance().start(); 
-    
-    // const context = cast.framework.CastReceiverContext.getInstance();
-    // const playerManager = context.getPlayerManager();
-
-    // let toastTimeout = null;
-
-    // // --- HELPER FUNCTIONS ---
-    function log(msg) {
-        console.log('[RECEIVER] ' + msg);
-        debugLog.innerText = msg;
-    }
-
-    function showToast(message, duration) {
-        duration = duration || 4000;
-        toastEl.innerText = message;
-        toastEl.classList.add('show');
-        if (toastTimeout) clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(function() {
-            toastEl.classList.remove('show');
-        }, duration);
-    }
-
-    function updateSenderUI() {
-        var senders = context.getSenders();
-        var count = senders.length;
-        if (count > 0) {
-            senderCount.innerHTML = count === 1 ? '1 device connected' : count + ' devices connected';
-            sendersInfo.classList.add('visible');
-            statusMsg.innerText = 'Connected';
-        } else {
-            sendersInfo.classList.remove('visible');
-            senderCount.innerHTML = '';
-            statusMsg.innerText = 'Ready to Cast';
-        }
-    }
-
-    function broadcastStatus(eventType, extra) {
-        var senders = context.getSenders();
-        var status = {
-            type: 'STATUS_UPDATE',
-            event: eventType,
-            senderCount: senders.length,
-            senders: senders.map(function(s) { return s.id; }),
-            timestamp: Date.now()
-        };
-        if (extra) Object.assign(status, extra);
-
-        try {
-            context.sendCustomMessage(CUSTOM_NAMESPACE, undefined, status);
-        } catch (e) {
-            console.warn('[RECEIVER] Broadcast failed:', e);
-        }
-    }
-
-    context.addEventListener(
+context.addEventListener(
         cast.framework.system.EventType.SENDER_DISCONNECTED,
         function(event) {
             log('Sender disconnected: ' + event.senderId);
@@ -207,3 +188,8 @@ context.start({
     options.customNamespaces = {};
     options.customNamespaces[CUSTOM_NAMESPACE] = cast.framework.system.MessageType.JSON;
     log('Receiver started successfully');
+
+context.start({
+    playbackConfig: playbackConfig,
+    playerManager: playerManager,
+});
