@@ -146,27 +146,25 @@ const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
 
 // // --- 2. PLAYER STATE LISTENERS ---
 playerManager.addEventListener(
-    cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+    cast.framework.events.EventType.MEDIA_STATUS,
     function(event) {
         var state = event.value;
-        log('State: ' + state);
-
         switch(state) {
-            case cast.framework.events.PlayerState.IDLE:
+            case cast.framework.events.EventType.IDLE:
                 idleScreen.classList.add('active');
                 loaderScreen.classList.remove('active');
                 updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
                 break;
-            case cast.framework.events.PlayerState.BUFFERING:
-            case cast.framework.events.PlayerState.LOADING:
+            case cast.framework.events.EventType.BUFFERING:
+            case cast.framework.events.EventType.LOADING:
                 idleScreen.classList.remove('active');
                 loaderScreen.classList.add('active');
                 break;
-            case cast.framework.events.PlayerState.PLAYING:
+            case cast.framework.events.EventType.PLAYING:
                 idleScreen.classList.remove('active');
                 loaderScreen.classList.remove('active');
                 break;
-            case cast.framework.events.PlayerState.PAUSED:
+            case cast.framework.events.EventType.PAUSED:
                 loaderScreen.classList.remove('active');
                 break;
         }
