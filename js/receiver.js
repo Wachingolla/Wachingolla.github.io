@@ -75,119 +75,119 @@ context.addEventListener(cast.framework.system.EventType.READY, () => {
 const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
 
 // --- 1 CONTEXT EVENT LISTENERS OF CONNECTION STATUS ---
-context.addEventListener(
-    cast.framework.system.EventType.SENDER_CONNECTED,
-    function(event) {
-        log('Sender connected: ' + event.senderId);
-        updateSenderUI();
-        // showToast('Device connected — ready to cast');
-        broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
-    }
-);
+// context.addEventListener(
+//     cast.framework.system.EventType.SENDER_CONNECTED,
+//     function(event) {
+//         log('Sender connected: ' + event.senderId);
+//         updateSenderUI();
+//         // showToast('Device connected — ready to cast');
+//         broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
+//     }
+// );
 
-context.addEventListener(
-    cast.framework.system.EventType.SENDER_DISCONNECTED,
-    function(event) {
-        log('Sender disconnected: ' + event.senderId);
-        updateSenderUI();
+// context.addEventListener(
+//     cast.framework.system.EventType.SENDER_DISCONNECTED,
+//     function(event) {
+//         log('Sender disconnected: ' + event.senderId);
+//         updateSenderUI();
 
-        if (context.getSenders().length === 0) {
-            showToast('All devices disconnected');
-        } else {
-            showToast('A device disconnected');
-            broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
-        }
-    }
-);
+//         if (context.getSenders().length === 0) {
+//             showToast('All devices disconnected');
+//         } else {
+//             showToast('A device disconnected');
+//             broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
+//         }
+//     }
+// );
 
-context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
-    var data = customEvent.data;
-    switch (data.type) {
-        case 'SHOW_TOAST':
-            showToast(data.message || 'Notification', data.duration || 4000);
-            break;
-        case 'SET_STATUS_MSG':
-            statusMsg.innerText = data.message || '';
-            break;
-    }
-}); 
+// context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
+//     var data = customEvent.data;
+//     switch (data.type) {
+//         case 'SHOW_TOAST':
+//             showToast(data.message || 'Notification', data.duration || 4000);
+//             break;
+//         case 'SET_STATUS_MSG':
+//             statusMsg.innerText = data.message || '';
+//             break;
+//     }
+// }); 
 
-// --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
-playerManager.setMessageInterceptor(
-cast.framework.messages.MessageType.LOAD, loadRequestData => {
-    const error = new cast.framework.messages.ErrorData(
-                    cast.framework.messages.ErrorType.LOAD_FAILED);
-    if (!loadRequestData.media) {
-    error.reason = cast.framework.messages.ErrorReason.INVALID_PARAM;
-    return error;
-    }
+// // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
+// playerManager.setMessageInterceptor(
+// cast.framework.messages.MessageType.LOAD, loadRequestData => {
+//     const error = new cast.framework.messages.ErrorData(
+//                     cast.framework.messages.ErrorType.LOAD_FAILED);
+//     if (!loadRequestData.media) {
+//     error.reason = cast.framework.messages.ErrorReason.INVALID_PARAM;
+//     return error;
+//     }
 
-    if (!loadRequestData.media.entity) {
-    return loadRequestData;
-    }
+//     if (!loadRequestData.media.entity) {
+//     return loadRequestData;
+//     }
 
-    return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
-                                        loadRequestData.credentials)
-    .then(asset => {
-        if (!asset) {
-        throw cast.framework.messages.ErrorReason.INVALID_REQUEST;
-        }
+//     return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
+//                                         loadRequestData.credentials)
+//     .then(asset => {
+//         if (!asset) {
+//         throw cast.framework.messages.ErrorReason.INVALID_REQUEST;
+//         }
 
-        idleScreen.classList.remove('active');
-        loadRequestData.media.contentUrl = asset.url;
-        loadRequestData.media.metadata = asset.metadata;
-        loadRequestData.media.tracks = asset.tracks;
-        return loadRequestData;
-    }).catch(reason => {
-        error.reason = reason; // cast.framework.messages.ErrorReason
-        return error;
-    });
-});
+//         idleScreen.classList.remove('active');
+//         loadRequestData.media.contentUrl = asset.url;
+//         loadRequestData.media.metadata = asset.metadata;
+//         loadRequestData.media.tracks = asset.tracks;
+//         return loadRequestData;
+//     }).catch(reason => {
+//         error.reason = reason; // cast.framework.messages.ErrorReason
+//         return error;
+//     });
+// });
 
-// --- 2. PLAYER STATE LISTENERS ---
-playerManager.addEventListener(
-    cast.framework.events.EventType.PLAYER_STATE_CHANGED,
-    function(event) {
-        var state = event.value;
-        log('State: ' + state);
+// // --- 2. PLAYER STATE LISTENERS ---
+// playerManager.addEventListener(
+//     cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+//     function(event) {
+//         var state = event.value;
+//         log('State: ' + state);
 
-        switch(state) {
-            case cast.framework.events.PlayerState.IDLE:
-                idleScreen.classList.add('active');
-                loaderScreen.classList.remove('active');
-                updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
-                break;
-            case cast.framework.events.PlayerState.BUFFERING:
-            case cast.framework.events.PlayerState.LOADING:
-                idleScreen.classList.remove('active');
-                loaderScreen.classList.add('active');
-                break;
-            case cast.framework.events.PlayerState.PLAYING:
-                idleScreen.classList.remove('active');
-                loaderScreen.classList.remove('active');
-                break;
-            case cast.framework.events.PlayerState.PAUSED:
-                loaderScreen.classList.remove('active');
-                break;
-        }
-        broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
-    }
-);
+//         switch(state) {
+//             case cast.framework.events.PlayerState.IDLE:
+//                 idleScreen.classList.add('active');
+//                 loaderScreen.classList.remove('active');
+//                 updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
+//                 break;
+//             case cast.framework.events.PlayerState.BUFFERING:
+//             case cast.framework.events.PlayerState.LOADING:
+//                 idleScreen.classList.remove('active');
+//                 loaderScreen.classList.add('active');
+//                 break;
+//             case cast.framework.events.PlayerState.PLAYING:
+//                 idleScreen.classList.remove('active');
+//                 loaderScreen.classList.remove('active');
+//                 break;
+//             case cast.framework.events.PlayerState.PAUSED:
+//                 loaderScreen.classList.remove('active');
+//                 break;
+//         }
+//         broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
+//     }
+// );
 
-playerManager.setMessageInterceptor(
-    cast.framework.messages.MessageType.LOAD,
-    function(loadRequestData) {
-        if (loadRequestData.media && loadRequestData.media.metadata) {
-            var title = loadRequestData.media.metadata.title;
-            statusMsg.innerText = 'Loading: ' + title;
-            showToast('Loading: ' + title);
-        }
-        return loadRequestData;
-    }
-);
+// playerManager.setMessageInterceptor(
+//     cast.framework.messages.MessageType.LOAD,
+//     function(loadRequestData) {
+//         if (loadRequestData.media && loadRequestData.media.metadata) {
+//             var title = loadRequestData.media.metadata.title;
+//             statusMsg.innerText = 'Loading: ' + title;
+//             showToast('Loading: ' + title);
+//         }
+//         return loadRequestData;
+//     }
+// );
 
 context.start({
-    playbackConfig: playbackConfig,
-    playerManager: playerManager,
-    castDebugLogger: castDebugLogger
+    // playbackConfig: playbackConfig,
+    // playerManager: playerManager,
+    // castDebugLogger: castDebugLogger
 });
