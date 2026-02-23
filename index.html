@@ -1,13 +1,475 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <script type="text/javascript"
-      src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js">
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Custom Receiver</title>
+    
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+
+    <style>
+        /* --- 2. GLOBAL STYLES & VARIABLES --- */
+        :root {
+            --primary-color: #00E5FF; /* Your Brand Color (Cyberpunk Teal) */
+            --bg-color: #0a0a0a;
+            --text-color: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-color);
+        }
+
+        /* --- 3. GOOGLE MEDIA PLAYER CUSTOMIZATION --- */
+        cast-media-player {
+            width: 100vw;
+            height: 100vh;
+            /* Hiding the default splash since we made a better one */
+            --splash-image: none; 
+            --splash-size: 0;
+            --cast-media-player-progress-bar-color: var(--primary-color);
+            --cast-media-player-seek-line-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* --- 4. IDLE / STANDBY SCREEN --- */
+        #idle-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10; /* Above player */
+            
+            /* Smooth Transition Logic */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+        }
+
+        #idle-screen.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Logo Area */
+        .logo-container {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .logo-text {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, #fff, var(--primary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Status Indicator Pill */
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            padding: 10px 24px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--primary-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-text {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            opacity: 0.8;
+        }
+
+        /* --- Connected Senders Info --- */
+        .senders-info {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .senders-info.visible {
+            opacity: 1;
+        }
+
+        .sender-count {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+        }
+
+        .sender-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .sender-badge .dot {
+            width: 6px; height: 6px;
+            background-color: #4caf50;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #4caf50;
+        }
+
+        /* --- Toast Notification --- */
+        #toast {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            padding: 12px 28px;
+            border-radius: 30px;
+            backdrop-filter: blur(15px);
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+        }
+
+        #toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- 5. LOADING OVERLAY --- */
+        #loader-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20; /* Above everything */
+            
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        #loader-screen.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .spinner {
+            width: 60px; height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* --- 6. DEBUG OVERLAY (Optional - remove for production) --- */
+        #debug-log {
+            position: absolute;
+            bottom: 20px; left: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
-  <cast-media-player></cast-media-player>
+
+    <cast-media-player></cast-media-player>
+
+    <div id="idle-screen" class="active">
+        <div class="logo-container">
+            <div class="logo-text">Presumiendo México TV</div>
+        </div>
+        <div class="status-pill">
+            <span class="status-dot"></span>
+            <span class="status-text" id="status-msg">Ready to Cast</span>
+        </div>
+        <div class="senders-info" id="senders-info">
+            <span class="sender-count" id="sender-count"></span>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="loader-screen">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="debug-log">Initialize...</div>
+
   <script>
-    cast.framework.CastReceiverContext.getInstance().start();
-  </script>
+      cast.framework.CastReceiverContext.getInstance().start(); 
+        // --- 7. JAVASCRIPT LOGIC ---
+
+        const CUSTOM_NAMESPACE = 'urn:x-cast:com.presumiendo.mexico';
+        
+        const context = cast.framework.CastReceiverContext.getInstance();
+        const playerManager = context.getPlayerManager();
+
+        // UI References
+        const idleScreen = document.getElementById('idle-screen');
+        const loaderScreen = document.getElementById('loader-screen');
+        const statusMsg = document.getElementById('status-msg');
+        const debugLog = document.getElementById('debug-log');
+        const sendersInfo = document.getElementById('senders-info');
+        const senderCount = document.getElementById('sender-count');
+        const toastEl = document.getElementById('toast');
+
+        let toastTimeout = null;
+
+        // Helper to update debug log
+        function log(msg) {
+            console.log('[RECEIVER] ' + msg);
+            debugLog.innerText = msg;
+        }
+
+        // --- TOAST NOTIFICATION ---
+        function showToast(message, duration) {
+            duration = duration || 4000;
+            toastEl.innerText = message;
+            toastEl.classList.add('show');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(function() {
+                toastEl.classList.remove('show');
+            }, duration);
+        }
+
+        // --- SENDER STATUS DISPLAY ---
+        function updateSenderUI() {
+            var senders = context.getSenders();
+            var count = senders.length;
+            if (count > 0) {
+                senderCount.innerHTML = count === 1
+                    ? '1 device connected'
+                    : count + ' devices connected';
+                sendersInfo.classList.add('visible');
+            } else {
+                sendersInfo.classList.remove('visible');
+                senderCount.innerHTML = '';
+            }
+        }
+
+        // --- BROADCAST STATUS TO ALL SENDERS ---
+        // Uses undefined as senderId to broadcast to every connected sender
+        function broadcastStatus(eventType, extra) {
+            var senders = context.getSenders();
+            var status = {
+                type: 'STATUS_UPDATE',
+                event: eventType,
+                senderCount: senders.length,
+                senders: senders.map(function(s) { return s.id; }),
+                timestamp: Date.now()
+            };
+            if (extra) Object.assign(status, extra);
+
+            try {
+                // undefined senderId = broadcast to all senders
+                context.sendCustomMessage(CUSTOM_NAMESPACE, undefined, status);
+                log('Broadcast: ' + eventType);
+            } catch (e) {
+                console.warn('[RECEIVER] Broadcast failed:', e);
+            }
+        }
+
+        // ============================================================
+        // PLAYER STATE — safe to register before start()
+        // ============================================================
+        playerManager.addEventListener(
+            cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+            function(event) {
+                var state = event.value;
+                log('State: ' + state);
+
+                switch(state) {
+                    case cast.framework.events.PlayerState.IDLE:
+                        idleScreen.classList.add('active');
+                        loaderScreen.classList.remove('active');
+                        if (context.getSenders().length > 0) {
+                            statusMsg.innerText = 'Connected';
+                        } else {
+                            statusMsg.innerText = 'Ready to Cast';
+                        }
+                        break;
+
+                    case cast.framework.events.PlayerState.BUFFERING:
+                    case cast.framework.events.PlayerState.LOADING:
+                        idleScreen.classList.remove('active');
+                        loaderScreen.classList.add('active');
+                        break;
+
+                    case cast.framework.events.PlayerState.PLAYING:
+                        idleScreen.classList.remove('active');
+                        loaderScreen.classList.remove('active');
+                        break;
+
+                    case cast.framework.events.PlayerState.PAUSED:
+                        loaderScreen.classList.remove('active');
+                        break;
+                }
+
+                broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
+            }
+        );
+
+        // ============================================================
+        // METADATA INTERCEPTOR — safe to register before start()
+        // ============================================================
+        playerManager.setMessageInterceptor(
+            cast.framework.messages.MessageType.LOAD,
+            function(loadRequestData) {
+                log('Loading Request Received');
+                
+                if (loadRequestData.media && loadRequestData.media.metadata) {
+                    var title = loadRequestData.media.metadata.title;
+                    statusMsg.innerText = 'Loading: ' + title;
+                    showToast('Loading: ' + title);
+                    broadcastStatus('MEDIA_LOADING', { title: title });
+                }
+                
+                return loadRequestData;
+            }
+        );
+
+        // ============================================================
+        // SYSTEM READY — register sender & custom message listeners
+        // here because the namespace is available only after start()
+        // ============================================================
+        context.addEventListener(
+            cast.framework.system.EventType.READY,
+            function(event) {
+                log('System READY — registering listeners');
+
+                // --- SENDER CONNECTED ---
+                context.addEventListener(
+                    cast.framework.system.EventType.SENDER_CONNECTED,
+                    function(event) {
+                        log('Sender connected: ' + event.senderId + ' UA: ' + event.userAgent);
+                        updateSenderUI();
+                        showToast('Device connected — ready to cast');
+                        statusMsg.innerText = 'Connected';
+                        broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
+                    }
+                );
+
+                // --- SENDER DISCONNECTED ---
+                context.addEventListener(
+                    cast.framework.system.EventType.SENDER_DISCONNECTED,
+                    function(event) {
+                        log('Sender disconnected: ' + event.senderId + ' reason: ' + event.reason);
+                        updateSenderUI();
+
+                        if (context.getSenders().length === 0) {
+                            statusMsg.innerText = 'Ready to Cast';
+                            showToast('All devices disconnected');
+                        } else {
+                            showToast('A device disconnected');
+                            broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
+                        }
+                    }
+                );
+
+                // --- CUSTOM MESSAGE CHANNEL ---
+                // Must be registered AFTER start() so the namespace is known
+                context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
+                    var senderId = customEvent.senderId;
+                    var data = customEvent.data;
+                    log('Message from ' + senderId + ': ' + JSON.stringify(data));
+
+                    switch (data.type) {
+                        case 'PING':
+                            context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+                                type: 'PONG',
+                                timestamp: Date.now()
+                            });
+                            break;
+
+                        case 'GET_STATUS':
+                            var senders = context.getSenders();
+                            context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+                                type: 'STATUS_UPDATE',
+                                event: 'STATUS_RESPONSE',
+                                senderCount: senders.length,
+                                senders: senders.map(function(s) { return s.id; }),
+                                timestamp: Date.now()
+                            });
+                            break;
+
+                        case 'SHOW_TOAST':
+                            showToast(data.message || 'Notification', data.duration || 4000);
+                            break;
+
+                        case 'SET_STATUS_MSG':
+                            statusMsg.innerText = data.message || '';
+                            break;
+
+                        default:
+                            log('Unknown message type: ' + data.type);
+                            break;
+                    }
+                });
+
+                log('All listeners registered on READY');
+            }
+        );
+
+        // ============================================================
+        // START THE RECEIVER
+        // customNamespaces MUST be declared here so addCustomMessageListener
+        // can reference the namespace after the system is ready.
+        // ============================================================
+        var options = new cast.framework.CastReceiverOptions();
+        options.maxInactivity = 3600; // 1 hour keep-alive
+
+        options.customNamespaces = {};
+        options.customNamespaces[CUSTOM_NAMESPACE] =
+            cast.framework.system.MessageType.JSON;
+
+        context.start(options);
+        log('Receiver started — waiting for READY event');
+    </script>
 </body>
 </html>
