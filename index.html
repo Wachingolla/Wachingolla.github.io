@@ -1,65 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>My Uni Platform Receiver</title>
   <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
   
   <style>
-    /* DESIGNER SECTION: Customize the UI vibe */
+    /* ----- DESIGNER ZONE START ----- */
     body {
       margin: 0;
-      background-color: black;
+      background-color: #000; /* Pure black background */
       overflow: hidden;
+      font-family: sans-serif;
     }
 
+    /* The Google Player Component */
     cast-media-player {
       width: 100vw;
       height: 100vh;
-      /* Customize progress bar color to match your app's brand */
-      --cast-media-player-progress-bar-color: #00ffcc; 
+      --cast-media-player-progress-bar-color: #00E5FF; /* Cyberpunk Teal style */
     }
 
-    #debug-overlay {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      color: rgba(255, 255, 255, 0.5);
-      font-family: monospace;
-      font-size: 14px;
-      z-index: 10;
-      pointer-events: none;
+    /* THE CUSTOM LOADING OVERLAY Container */
+    #custom-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* Semi-transparent black background to dim the video behind it */
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 999; /* Must be higher than the player */
+        
+        /*Smooth fade transition */
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
     }
+
+    /* The class JS adds when it needs to show the loader */
+    #custom-loader.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Your Branding Text */
+    .loader-text {
+        color: white;
+        margin-top: 20px;
+        letter-spacing: 1.5px;
+        font-weight: 300;
+    }
+
+    /* A minimalist CSS Spinner - Replace this with an SVG if you want */
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #00E5FF; /* Match your brand color */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    /* ----- DESIGNER ZONE END ----- */
   </style>
 </head>
 <body>
 
-  <div id="debug-overlay">Receiver Initializing...</div>
-  
   <cast-media-player></cast-media-player>
+
+  <div id="custom-loader">
+      <div class="spinner"></div>
+      <div class="loader-text">LOADING STREAM...</div>
+  </div>
 
   <script>
     const context = cast.framework.CastReceiverContext.getInstance();
     const playerManager = context.getPlayerManager();
-    const debugElement = document.getElementById('debug-overlay');
+    
+    // Get reference to your custom overlay UI
+    const loaderOverlay = document.getElementById('custom-loader');
 
-    // Monitor playback state for debugging
+    // --- DEV LOGIC START ---
+
+    // 1. The "State Watcher"
+    // This listens for changes like Buffering, Playing, Paused
     playerManager.addEventListener(
-      cast.framework.events.EventType.PLAYER_STATE_CHANGED, (event) => {
-        debugElement.innerText = "Status: " + event.value;
+      cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+      (event) => {
+        const state = event.value;
+        console.log("Player State changed to:", state);
+
+        // Show loader during buffering or initial load
+        if (state === cast.framework.events.PlayerState.BUFFERING || state === cast.framework.events.PlayerState.LOADING) {
+             loaderOverlay.classList.add('active');
+        } 
+        // Hide loader when playing or paused (waiting for user input)
+        else if (state === cast.framework.events.PlayerState.PLAYING || state === cast.framework.events.PlayerState.PAUSED || state === cast.framework.events.PlayerState.IDLE) {
+             loaderOverlay.classList.remove('active');
+        }
       }
     );
 
-    // INTERCEPTOR: This is where you'd handle specific logic for your videos
-    playerManager.setMessageInterceptor(
-      cast.framework.messages.MessageType.LOAD,
-      loadRequestData => {
-        console.log("Loading metadata:", loadRequestData.media.metadata);
-        return loadRequestData;
-      }
-    );
+    // --- DEV LOGIC END ---
 
-    // Start the Cast Receiver
+    // Start the engine
     context.start();
   </script>
 </body>
