@@ -70,7 +70,7 @@
         .logo-image {
             width: 120px;
             height: 120px;
-            background: url('../assets/logo.png') no-repeat center/contain;
+            background: url('https://github.com/Wachingolla/Wachingolla.github.io/blob/main/assets/horizontal_logo.png?raw=true') no-repeat center/contain;
             filter: drop-shadow(0 0 10px var(--primary-color));
         }
 
