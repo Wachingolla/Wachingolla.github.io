@@ -27,9 +27,11 @@
 
         /* --- 3. GOOGLE MEDIA PLAYER CUSTOMIZATION --- */
         cast-media-player {
+            position: absolute;
+            top: 0; left: 0;
             width: 100vw;
             height: 100vh;
-            /* Hiding the default splash since we made a better one */
+            z-index: 1; /* Explicitly put it at the bottom layer */
             --splash-image: none; 
             --splash-size: 0;
             --cast-media-player-progress-bar-color: var(--primary-color);
@@ -242,234 +244,162 @@
     <div id="debug-log">Initialize...</div>
 
   <script>
-      cast.framework.CastReceiverContext.getInstance().start(); 
-        // --- 7. JAVASCRIPT LOGIC ---
+      const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
+      
+      const context = cast.framework.CastReceiverContext.getInstance();
+      const playerManager = context.getPlayerManager();
 
-        const CUSTOM_NAMESPACE = 'urn:x-cast:com.presumiendo.mexico';
-        
-        const context = cast.framework.CastReceiverContext.getInstance();
-        const playerManager = context.getPlayerManager();
+      // UI References
+      const idleScreen = document.getElementById('idle-screen');
+      const loaderScreen = document.getElementById('loader-screen');
+      const statusMsg = document.getElementById('status-msg');
+      const debugLog = document.getElementById('debug-log');
+      const sendersInfo = document.getElementById('senders-info');
+      const senderCount = document.getElementById('sender-count');
+      const toastEl = document.getElementById('toast');
 
-        // UI References
-        const idleScreen = document.getElementById('idle-screen');
-        const loaderScreen = document.getElementById('loader-screen');
-        const statusMsg = document.getElementById('status-msg');
-        const debugLog = document.getElementById('debug-log');
-        const sendersInfo = document.getElementById('senders-info');
-        const senderCount = document.getElementById('sender-count');
-        const toastEl = document.getElementById('toast');
+      let toastTimeout = null;
 
-        let toastTimeout = null;
+      // --- HELPER FUNCTIONS ---
+      function log(msg) {
+          console.log('[RECEIVER] ' + msg);
+          debugLog.innerText = msg;
+      }
 
-        // Helper to update debug log
-        function log(msg) {
-            console.log('[RECEIVER] ' + msg);
-            debugLog.innerText = msg;
-        }
+      function showToast(message, duration) {
+          duration = duration || 4000;
+          toastEl.innerText = message;
+          toastEl.classList.add('show');
+          if (toastTimeout) clearTimeout(toastTimeout);
+          toastTimeout = setTimeout(function() {
+              toastEl.classList.remove('show');
+          }, duration);
+      }
 
-        // --- TOAST NOTIFICATION ---
-        function showToast(message, duration) {
-            duration = duration || 4000;
-            toastEl.innerText = message;
-            toastEl.classList.add('show');
-            if (toastTimeout) clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(function() {
-                toastEl.classList.remove('show');
-            }, duration);
-        }
+      function updateSenderUI() {
+          var senders = context.getSenders();
+          var count = senders.length;
+          if (count > 0) {
+              senderCount.innerHTML = count === 1 ? '1 device connected' : count + ' devices connected';
+              sendersInfo.classList.add('visible');
+              statusMsg.innerText = 'Connected';
+          } else {
+              sendersInfo.classList.remove('visible');
+              senderCount.innerHTML = '';
+              statusMsg.innerText = 'Ready to Cast';
+          }
+      }
 
-        // --- SENDER STATUS DISPLAY ---
-        function updateSenderUI() {
-            var senders = context.getSenders();
-            var count = senders.length;
-            if (count > 0) {
-                senderCount.innerHTML = count === 1
-                    ? '1 device connected'
-                    : count + ' devices connected';
-                sendersInfo.classList.add('visible');
-            } else {
-                sendersInfo.classList.remove('visible');
-                senderCount.innerHTML = '';
-            }
-        }
+      function broadcastStatus(eventType, extra) {
+          var senders = context.getSenders();
+          var status = {
+              type: 'STATUS_UPDATE',
+              event: eventType,
+              senderCount: senders.length,
+              senders: senders.map(function(s) { return s.id; }),
+              timestamp: Date.now()
+          };
+          if (extra) Object.assign(status, extra);
 
-        // --- BROADCAST STATUS TO ALL SENDERS ---
-        // Uses undefined as senderId to broadcast to every connected sender
-        function broadcastStatus(eventType, extra) {
-            var senders = context.getSenders();
-            var status = {
-                type: 'STATUS_UPDATE',
-                event: eventType,
-                senderCount: senders.length,
-                senders: senders.map(function(s) { return s.id; }),
-                timestamp: Date.now()
-            };
-            if (extra) Object.assign(status, extra);
+          try {
+              context.sendCustomMessage(CUSTOM_NAMESPACE, undefined, status);
+          } catch (e) {
+              console.warn('[RECEIVER] Broadcast failed:', e);
+          }
+      }
 
-            try {
-                // undefined senderId = broadcast to all senders
-                context.sendCustomMessage(CUSTOM_NAMESPACE, undefined, status);
-                log('Broadcast: ' + eventType);
-            } catch (e) {
-                console.warn('[RECEIVER] Broadcast failed:', e);
-            }
-        }
+      // --- 1. SENDER CONNECTION LISTENERS ---
+      // (Moved outside of the READY event to catch the very first connection)
+      context.addEventListener(
+          cast.framework.system.EventType.SENDER_CONNECTED,
+          function(event) {
+              log('Sender connected: ' + event.senderId);
+              updateSenderUI();
+              showToast('Device connected — ready to cast');
+              broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
+          }
+      );
 
-        // ============================================================
-        // PLAYER STATE — safe to register before start()
-        // ============================================================
-        playerManager.addEventListener(
-            cast.framework.events.EventType.PLAYER_STATE_CHANGED,
-            function(event) {
-                var state = event.value;
-                log('State: ' + state);
+      context.addEventListener(
+          cast.framework.system.EventType.SENDER_DISCONNECTED,
+          function(event) {
+              log('Sender disconnected: ' + event.senderId);
+              updateSenderUI();
 
-                switch(state) {
-                    case cast.framework.events.PlayerState.IDLE:
-                        idleScreen.classList.add('active');
-                        loaderScreen.classList.remove('active');
-                        if (context.getSenders().length > 0) {
-                            statusMsg.innerText = 'Connected';
-                        } else {
-                            statusMsg.innerText = 'Ready to Cast';
-                        }
-                        break;
+              if (context.getSenders().length === 0) {
+                  showToast('All devices disconnected');
+              } else {
+                  showToast('A device disconnected');
+                  broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
+              }
+          }
+      );
 
-                    case cast.framework.events.PlayerState.BUFFERING:
-                    case cast.framework.events.PlayerState.LOADING:
-                        idleScreen.classList.remove('active');
-                        loaderScreen.classList.add('active');
-                        break;
+      // --- 2. PLAYER STATE LISTENERS ---
+      playerManager.addEventListener(
+          cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+          function(event) {
+              var state = event.value;
+              log('State: ' + state);
 
-                    case cast.framework.events.PlayerState.PLAYING:
-                        idleScreen.classList.remove('active');
-                        loaderScreen.classList.remove('active');
-                        break;
+              switch(state) {
+                  case cast.framework.events.PlayerState.IDLE:
+                      idleScreen.classList.add('active');
+                      loaderScreen.classList.remove('active');
+                      updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
+                      break;
+                  case cast.framework.events.PlayerState.BUFFERING:
+                  case cast.framework.events.PlayerState.LOADING:
+                      idleScreen.classList.remove('active');
+                      loaderScreen.classList.add('active');
+                      break;
+                  case cast.framework.events.PlayerState.PLAYING:
+                      idleScreen.classList.remove('active');
+                      loaderScreen.classList.remove('active');
+                      break;
+                  case cast.framework.events.PlayerState.PAUSED:
+                      loaderScreen.classList.remove('active');
+                      break;
+              }
+              broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
+          }
+      );
 
-                    case cast.framework.events.PlayerState.PAUSED:
-                        loaderScreen.classList.remove('active');
-                        break;
-                }
+      playerManager.setMessageInterceptor(
+          cast.framework.messages.MessageType.LOAD,
+          function(loadRequestData) {
+              if (loadRequestData.media && loadRequestData.media.metadata) {
+                  var title = loadRequestData.media.metadata.title;
+                  statusMsg.innerText = 'Loading: ' + title;
+                  showToast('Loading: ' + title);
+              }
+              return loadRequestData;
+          }
+      );
 
-                broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
-            }
-        );
+      // --- 3. CUSTOM MESSAGE LISTENER ---
+      context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
+          var data = customEvent.data;
+          switch (data.type) {
+              case 'SHOW_TOAST':
+                  showToast(data.message || 'Notification', data.duration || 4000);
+                  break;
+              case 'SET_STATUS_MSG':
+                  statusMsg.innerText = data.message || '';
+                  break;
+          }
+      });
 
-        // ============================================================
-        // METADATA INTERCEPTOR — safe to register before start()
-        // ============================================================
-        playerManager.setMessageInterceptor(
-            cast.framework.messages.MessageType.LOAD,
-            function(loadRequestData) {
-                log('Loading Request Received');
-                
-                if (loadRequestData.media && loadRequestData.media.metadata) {
-                    var title = loadRequestData.media.metadata.title;
-                    statusMsg.innerText = 'Loading: ' + title;
-                    showToast('Loading: ' + title);
-                    broadcastStatus('MEDIA_LOADING', { title: title });
-                }
-                
-                return loadRequestData;
-            }
-        );
+      // --- 4. START THE ENGINE (ONLY ONCE!) ---
+      var options = new cast.framework.CastReceiverOptions();
+      options.maxInactivity = 3600; 
 
-        // ============================================================
-        // SYSTEM READY — register sender & custom message listeners
-        // here because the namespace is available only after start()
-        // ============================================================
-        context.addEventListener(
-            cast.framework.system.EventType.READY,
-            function(event) {
-                log('System READY — registering listeners');
+      // Register namespace before starting
+      options.customNamespaces = {};
+      options.customNamespaces[CUSTOM_NAMESPACE] = cast.framework.system.MessageType.JSON;
 
-                // --- SENDER CONNECTED ---
-                context.addEventListener(
-                    cast.framework.system.EventType.SENDER_CONNECTED,
-                    function(event) {
-                        log('Sender connected: ' + event.senderId + ' UA: ' + event.userAgent);
-                        updateSenderUI();
-                        showToast('Device connected — ready to cast');
-                        statusMsg.innerText = 'Connected';
-                        broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
-                    }
-                );
-
-                // --- SENDER DISCONNECTED ---
-                context.addEventListener(
-                    cast.framework.system.EventType.SENDER_DISCONNECTED,
-                    function(event) {
-                        log('Sender disconnected: ' + event.senderId + ' reason: ' + event.reason);
-                        updateSenderUI();
-
-                        if (context.getSenders().length === 0) {
-                            statusMsg.innerText = 'Ready to Cast';
-                            showToast('All devices disconnected');
-                        } else {
-                            showToast('A device disconnected');
-                            broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
-                        }
-                    }
-                );
-
-                // --- CUSTOM MESSAGE CHANNEL ---
-                // Must be registered AFTER start() so the namespace is known
-                context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
-                    var senderId = customEvent.senderId;
-                    var data = customEvent.data;
-                    log('Message from ' + senderId + ': ' + JSON.stringify(data));
-
-                    switch (data.type) {
-                        case 'PING':
-                            context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
-                                type: 'PONG',
-                                timestamp: Date.now()
-                            });
-                            break;
-
-                        case 'GET_STATUS':
-                            var senders = context.getSenders();
-                            context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
-                                type: 'STATUS_UPDATE',
-                                event: 'STATUS_RESPONSE',
-                                senderCount: senders.length,
-                                senders: senders.map(function(s) { return s.id; }),
-                                timestamp: Date.now()
-                            });
-                            break;
-
-                        case 'SHOW_TOAST':
-                            showToast(data.message || 'Notification', data.duration || 4000);
-                            break;
-
-                        case 'SET_STATUS_MSG':
-                            statusMsg.innerText = data.message || '';
-                            break;
-
-                        default:
-                            log('Unknown message type: ' + data.type);
-                            break;
-                    }
-                });
-
-                log('All listeners registered on READY');
-            }
-        );
-
-        // ============================================================
-        // START THE RECEIVER
-        // customNamespaces MUST be declared here so addCustomMessageListener
-        // can reference the namespace after the system is ready.
-        // ============================================================
-        var options = new cast.framework.CastReceiverOptions();
-        options.maxInactivity = 3600; // 1 hour keep-alive
-
-        options.customNamespaces = {};
-        options.customNamespaces[CUSTOM_NAMESPACE] =
-            cast.framework.system.MessageType.JSON;
-
-        context.start(options);
-        log('Receiver started — waiting for READY event');
-    </script>
+      context.start(options);
+      log('Receiver started successfully');
+  </script>
 </body>
 </html>
