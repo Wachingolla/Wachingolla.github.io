@@ -101,6 +101,72 @@
             opacity: 0.8;
         }
 
+        /* --- Connected Senders Info --- */
+        .senders-info {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .senders-info.visible {
+            opacity: 1;
+        }
+
+        .sender-count {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+        }
+
+        .sender-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .sender-badge .dot {
+            width: 6px; height: 6px;
+            background-color: #4caf50;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #4caf50;
+        }
+
+        /* --- Toast Notification --- */
+        #toast {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            padding: 12px 28px;
+            border-radius: 30px;
+            backdrop-filter: blur(15px);
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+        }
+
+        #toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
         /* --- 5. LOADING OVERLAY --- */
         #loader-screen {
             position: fixed;
@@ -162,7 +228,12 @@
             <span class="status-dot"></span>
             <span class="status-text" id="status-msg">Ready to Cast</span>
         </div>
+        <div class="senders-info" id="senders-info">
+            <span class="sender-count" id="sender-count"></span>
+        </div>
     </div>
+
+    <div id="toast"></div>
 
     <div id="loader-screen">
         <div class="spinner"></div>
@@ -172,6 +243,8 @@
 
     <script>
         // --- 7. JAVASCRIPT LOGIC ---
+
+        const CUSTOM_NAMESPACE = 'urn:x-cast:com.presumiendo.mexico';
         
         const context = cast.framework.CastReceiverContext.getInstance();
         const playerManager = context.getPlayerManager();
@@ -181,6 +254,13 @@
         const loaderScreen = document.getElementById('loader-screen');
         const statusMsg = document.getElementById('status-msg');
         const debugLog = document.getElementById('debug-log');
+        const sendersInfo = document.getElementById('senders-info');
+        const senderCount = document.getElementById('sender-count');
+        const toastEl = document.getElementById('toast');
+
+        // Track connected senders
+        let connectedSenders = [];
+        let toastTimeout = null;
 
         // Helper to update debug log
         function log(msg) {
@@ -188,52 +268,182 @@
             debugLog.innerText = msg;
         }
 
-        // --- STATE MANAGEMENT ---
+        // --- TOAST NOTIFICATION ---
+        function showToast(message, duration = 4000) {
+            toastEl.innerText = message;
+            toastEl.classList.add('show');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, duration);
+        }
+
+        // --- SENDER STATUS DISPLAY ---
+        function updateSenderUI() {
+            const count = connectedSenders.length;
+            if (count > 0) {
+                senderCount.innerHTML = count === 1
+                    ? '1 device connected'
+                    : count + ' devices connected';
+                sendersInfo.classList.add('visible');
+            } else {
+                sendersInfo.classList.remove('visible');
+                senderCount.innerHTML = '';
+            }
+        }
+
+        // --- BUILD & SEND STATUS TO ALL SENDERS ---
+        function broadcastStatus(eventType, extra) {
+            const status = {
+                type: 'STATUS_UPDATE',
+                event: eventType,
+                senderCount: connectedSenders.length,
+                senders: connectedSenders.map(s => s.id),
+                playerState: playerManager.getPlayerState(),
+                timestamp: Date.now()
+            };
+            if (extra) Object.assign(status, extra);
+
+            connectedSenders.forEach(sender => {
+                try {
+                    context.sendCustomMessage(CUSTOM_NAMESPACE, sender.id, status);
+                } catch (e) {
+                    console.warn('Failed to send status to ' + sender.id, e);
+                }
+            });
+            log('Broadcast: ' + eventType);
+        }
+
+        // --- SENDER CONNECTED / DISCONNECTED ---
+        context.addEventListener(
+            cast.framework.system.EventType.SENDER_CONNECTED,
+            (event) => {
+                const senderId = event.senderId;
+                if (!connectedSenders.find(s => s.id === senderId)) {
+                    connectedSenders.push({ id: senderId, connectedAt: Date.now() });
+                }
+                log('Sender connected: ' + senderId);
+                updateSenderUI();
+                showToast('Device connected — ready to cast');
+                statusMsg.innerText = 'Connected';
+
+                // Notify all senders about the new connection
+                broadcastStatus('SENDER_CONNECTED', { newSenderId: senderId });
+            }
+        );
+
+        context.addEventListener(
+            cast.framework.system.EventType.SENDER_DISCONNECTED,
+            (event) => {
+                const senderId = event.senderId;
+                connectedSenders = connectedSenders.filter(s => s.id !== senderId);
+                log('Sender disconnected: ' + senderId);
+                updateSenderUI();
+
+                if (connectedSenders.length === 0) {
+                    statusMsg.innerText = 'Ready to Cast';
+                    showToast('All devices disconnected');
+                } else {
+                    showToast('A device disconnected');
+                    broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: senderId });
+                }
+            }
+        );
+
+        // --- CUSTOM MESSAGE CHANNEL ---
+        context.addCustomMessageListener(CUSTOM_NAMESPACE, (customEvent) => {
+            const senderId = customEvent.senderId;
+            const data = customEvent.data;
+            log('Message from ' + senderId + ': ' + JSON.stringify(data));
+
+            // Handle different message types from the Flutter app
+            switch (data.type) {
+                case 'PING':
+                    // Respond with a PONG so the sender knows the receiver is alive
+                    context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+                        type: 'PONG',
+                        timestamp: Date.now()
+                    });
+                    break;
+
+                case 'GET_STATUS':
+                    // Send full status back to requesting sender
+                    context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+                        type: 'STATUS_UPDATE',
+                        event: 'STATUS_RESPONSE',
+                        senderCount: connectedSenders.length,
+                        senders: connectedSenders.map(s => s.id),
+                        playerState: playerManager.getPlayerState(),
+                        timestamp: Date.now()
+                    });
+                    break;
+
+                case 'SHOW_TOAST':
+                    // Display a toast message on the TV screen
+                    showToast(data.message || 'Notification', data.duration || 4000);
+                    break;
+
+                case 'SET_STATUS_MSG':
+                    // Update the status message on the idle screen
+                    statusMsg.innerText = data.message || '';
+                    break;
+
+                default:
+                    log('Unknown message type: ' + data.type);
+                    break;
+            }
+        });
+
+        // --- PLAYER STATE MANAGEMENT ---
         playerManager.addEventListener(
             cast.framework.events.EventType.PLAYER_STATE_CHANGED,
             (event) => {
                 const state = event.value;
-                log("State: " + state);
+                log('State: ' + state);
 
                 switch(state) {
                     case cast.framework.events.PlayerState.IDLE:
-                        // Show Idle Screen
                         idleScreen.classList.add('active');
                         loaderScreen.classList.remove('active');
-                        statusMsg.innerText = "Ready to Cast";
+                        if (connectedSenders.length > 0) {
+                            statusMsg.innerText = 'Connected';
+                        } else {
+                            statusMsg.innerText = 'Ready to Cast';
+                        }
                         break;
 
                     case cast.framework.events.PlayerState.BUFFERING:
                     case cast.framework.events.PlayerState.LOADING:
-                        // Show Loader
                         idleScreen.classList.remove('active');
                         loaderScreen.classList.add('active');
                         break;
 
                     case cast.framework.events.PlayerState.PLAYING:
-                        // Hide All Overlays -> Show Video
                         idleScreen.classList.remove('active');
                         loaderScreen.classList.remove('active');
                         break;
 
                     case cast.framework.events.PlayerState.PAUSED:
-                        // Optional: You could show a "Paused" icon here
                         loaderScreen.classList.remove('active');
                         break;
                 }
+
+                // Broadcast player state change to all connected senders
+                broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
             }
         );
 
         // --- METADATA INTERCEPTOR ---
-        // When Flutter sends a 'LOAD' request, update the UI text before playing
         playerManager.setMessageInterceptor(
             cast.framework.messages.MessageType.LOAD,
             loadRequestData => {
-                log("Loading Request Received");
+                log('Loading Request Received');
                 
-                // If metadata exists, show "Loading [Title]..." on the idle screen
                 if (loadRequestData.media && loadRequestData.media.metadata) {
-                    statusMsg.innerText = "Loading: " + loadRequestData.media.metadata.title;
+                    const title = loadRequestData.media.metadata.title;
+                    statusMsg.innerText = 'Loading: ' + title;
+                    showToast('Loading: ' + title);
+                    broadcastStatus('MEDIA_LOADING', { title: title });
                 }
                 
                 return loadRequestData;
@@ -244,9 +454,14 @@
         const options = new cast.framework.CastReceiverOptions();
         
         // PREVENT SLEEP: Keep the receiver alive for 1 hour without input
-        options.maxInactivity = 3600; 
+        options.maxInactivity = 3600;
+
+        // Register custom namespace for messaging
+        options.customNamespaces = Object.assign({});
+        options.customNamespaces[CUSTOM_NAMESPACE] = cast.framework.system.MessageType.JSON;
 
         context.start(options);
+        log('Receiver started — custom channel: ' + CUSTOM_NAMESPACE);
     </script>
 </body>
 </html>
