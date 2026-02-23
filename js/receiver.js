@@ -27,8 +27,11 @@ function showToast(message, duration) {
 
 // --- 0. INITIALIZATION ---
 const context = cast.framework.CastReceiverContext.getInstance();
-const playerManager = context.getPlayerManager();
+const options = new cast.framework.CastReceiverOptions();
+
 const playbackConfig = new cast.framework.PlaybackConfig();
+const playerManager = context.getPlayerManager();
+
 // const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
 
 // --- 0.1 Enable debug logger (optional) ---
@@ -73,22 +76,26 @@ const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
 
 // // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
 playerManager.setMessageInterceptor(
-    cast.framework.messages.MessageType.LOAD, loadRequestData => {
-    
-
-    if (!loadRequestData.media.entity) {
-        // Copy the value from contentId for legacy reasons if needed
-        loadRequestData.media.entity = loadRequestData.media.contentId;
+  cast.framework.messages.MessageType.LOAD,
+  loadRequestData => {
+    // 1. Validate the data
+    if (!loadRequestData.media) {
+      return new cast.framework.messages.ErrorData(
+        cast.framework.messages.ErrorType.LOAD_FAILED);
     }
 
-    return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
-                                        loadRequestData.credentials)
-    .then(asset => {
-        loadRequestData.media.contentUrl = asset.url;
-        //   ...
-        return loadRequestData;
-    });
-});
+    // 2. Modify the data (e.g., fetching a real URL from an ID)
+    // You can return the modified data or a Promise that resolves with it
+    return loadRequestData; 
+  }
+);
+
+playerManager.addEventListener(
+  cast.framework.events.EventType.MEDIA_STATUS,
+  (event) => {
+    // Handle status changes here
+  }
+);
 
 
 // // --- 2. PLAYER STATE LISTENERS ---
