@@ -154,8 +154,4 @@ playerManager.setPlaybackConfig(playbackConfig);
 //     }
 // );
 
-context.start({
-    // playbackConfig: playbackConfig,
-    playerManager: playerManager,
-    // castDebugLogger: castDebugLogger
-});
+context.start({ playerManager: playerManager, });
