@@ -25,38 +25,6 @@ function showToast(message, duration) {
     }, duration);
 }
 
-function updateSenderUI() {
-    var senders = context.getSenders();
-    var count = senders.length;
-    if (count > 0) {
-        senderCount.innerHTML = count === 1 ? '1 dispositivo conectado' : count + ' dispositivos conectados';
-        sendersInfo.classList.add('visible');
-        statusMsg.innerText = 'Conectado';
-    } else {
-        sendersInfo.classList.remove('visible');
-        senderCount.innerHTML = '';
-        statusMsg.innerText = 'Conectando...';
-    }
-}
-
-function broadcastStatus(eventType, extra) {
-    var senders = context.getSenders();
-    var status = {
-        type: 'STATUS_UPDATE',
-        event: eventType,
-        senderCount: senders.length,
-        senders: senders.map(function(s) { return s.id; }),
-        timestamp: Date.now()
-    };
-    if (extra) Object.assign(status, extra);
-
-    try {
-        context.sendCustomMessage(CUSTOM_NAMESPACE, undefined, status);
-    } catch (e) {
-        console.warn('[RECEIVER] Broadcast failed:', e);
-    }
-}
-
 // --- 0. INITIALIZATION ---
 const context = cast.framework.CastReceiverContext.getInstance();
 const playerManager = context.getPlayerManager();
@@ -79,7 +47,7 @@ context.addEventListener(
     cast.framework.system.EventType.SENDER_CONNECTED,
     function(event) {
         log('Sender connected: ' + event.senderId);
-        updateSenderUI();
+        statusMsg.innerText = 'Conectado';
     }
 );
 
@@ -87,8 +55,7 @@ context.addEventListener(
     cast.framework.system.EventType.READY,
     function(event) {
         log('Receiver is ready');
-        updateSenderUI();
-        // showToast('Receiver is ready');
+        statusMsg.innerText = 'Listo para transmitir';
     }
 );
 
@@ -96,14 +63,10 @@ context.addEventListener(
     cast.framework.system.EventType.SENDER_DISCONNECTED,
     function(event) {
         log('Sender disconnected: ' + event.senderId);
-        updateSenderUI();
-
-        // if (context.getSenders().length === 0) {
-        //     showToast('All devices disconnected');
-        // } else {
-        //     showToast('A device disconnected');
-        //     broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
-        // }
+        if (context.getSenders().length === 0) {
+            log('All senders disconnected, stopping app');
+            statusMsg.innerText = 'Esperando conexión...';
+        }
     }
 );
 
@@ -120,36 +83,36 @@ context.addEventListener(
 // }); 
 
 // // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
-// playerManager.setMessageInterceptor(
-// cast.framework.messages.MessageType.LOAD, loadRequestData => {
-//     const error = new cast.framework.messages.ErrorData(
-//                     cast.framework.messages.ErrorType.LOAD_FAILED);
-//     if (!loadRequestData.media) {
-//     error.reason = cast.framework.messages.ErrorReason.INVALID_PARAM;
-//     return error;
-//     }
+playerManager.setMessageInterceptor(
+cast.framework.messages.MessageType.LOAD, loadRequestData => {
+    const error = new cast.framework.messages.ErrorData(
+                    cast.framework.messages.ErrorType.LOAD_FAILED);
+    if (!loadRequestData.media) {
+    error.reason = cast.framework.messages.ErrorReason.INVALID_PARAM;
+    return error;
+    }
 
-//     if (!loadRequestData.media.entity) {
-//     return loadRequestData;
-//     }
+    if (!loadRequestData.media.entity) {
+    return loadRequestData;
+    }
 
-//     return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
-//                                         loadRequestData.credentials)
-//     .then(asset => {
-//         if (!asset) {
-//         throw cast.framework.messages.ErrorReason.INVALID_REQUEST;
-//         }
+    return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
+                                        loadRequestData.credentials)
+    .then(asset => {
+        if (!asset) {
+        throw cast.framework.messages.ErrorReason.INVALID_REQUEST;
+        }
 
-//         idleScreen.classList.remove('active');
-//         loadRequestData.media.contentUrl = asset.url;
-//         loadRequestData.media.metadata = asset.metadata;
-//         loadRequestData.media.tracks = asset.tracks;
-//         return loadRequestData;
-//     }).catch(reason => {
-//         error.reason = reason; // cast.framework.messages.ErrorReason
-//         return error;
-//     });
-// });
+        idleScreen.classList.add('hide');
+        loadRequestData.media.contentUrl = asset.url;
+        loadRequestData.media.metadata = asset.metadata;
+        loadRequestData.media.tracks = asset.tracks;
+        return loadRequestData;
+    }).catch(reason => {
+        error.reason = reason; // cast.framework.messages.ErrorReason
+        return error;
+    });
+});
 
 // // --- 2. PLAYER STATE LISTENERS ---
 playerManager.addEventListener(
@@ -158,17 +121,17 @@ playerManager.addEventListener(
         var state = event.value;
         switch(state) {
             case cast.framework.events.EventType.IDLE:
-                idleScreen.classList.add('active');
-                loaderScreen.classList.remove('active');
+                idleScreen.classList.remove('hide');
+                loaderScreen.classList.add('hide');
                 updateSenderUI(); 
                 break;
             case cast.framework.events.EventType.BUFFERING:
             case cast.framework.events.EventType.LOADING:
-                idleScreen.classList.remove('active');
+                idleScreen.classList.remove('hide');
                 loaderScreen.classList.add('active');
                 break;
             case cast.framework.events.EventType.PLAYING:
-                idleScreen.classList.remove('active');
+                idleScreen.classList.add('hide');
                 loaderScreen.classList.remove('active');
                 break;
             case cast.framework.events.EventType.PAUSED:

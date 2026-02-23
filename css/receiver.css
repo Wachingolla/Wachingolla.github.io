@@ -46,9 +46,14 @@
             transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
         }
 
-        #idle-screen.active {
-            opacity: 1;
-            visibility: visible;
+        #idle-screen.hide {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #loader-screen.hide {
+            opacity: 0;
+            visibility: hidden;
         }
 
         /* Logo Area */
@@ -56,20 +61,10 @@
             margin-bottom: 40px;
             text-align: center;
         }
-        
-        /* .logo-text {
-            font-size: 3rem;
-            font-weight: 800;
-            letter-spacing: 4px;
-            background: linear-gradient(90deg, #fff, var(--primary-color));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        } */
 
         .logo-image {
-            width: 120px;
-            height: 120px;
+            width:  400px;
+            height: 400px;
             background: url('https://github.com/Wachingolla/Wachingolla.github.io/blob/main/assets/horizontal_logo.png?raw=true') no-repeat center/contain;
             filter: drop-shadow(0 0 10px var(--primary-color));
         }
