@@ -70,36 +70,25 @@ context.addEventListener(
     }
 );
 
-// context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
-//     var data = customEvent.data;
-//     switch (data.type) {
-//         case 'SHOW_TOAST':
-//             showToast(data.message || 'Notification', data.duration || 4000);
-//             break;
-//         case 'SET_STATUS_MSG':
-//             statusMsg.innerText = data.message || '';
-//             break;
-//     }
-// }); 
 
 // // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
 playerManager.setMessageInterceptor(
     cast.framework.messages.MessageType.LOAD, loadRequestData => {
-      
+    
 
-      if (!loadRequestData.media.entity) {
+    if (!loadRequestData.media.entity) {
         // Copy the value from contentId for legacy reasons if needed
         loadRequestData.media.entity = loadRequestData.media.contentId;
-      }
+    }
 
-      return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
-                                          loadRequestData.credentials)
-        .then(asset => {
-          loadRequestData.media.contentUrl = asset.url;
+    return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
+                                        loadRequestData.credentials)
+    .then(asset => {
+        loadRequestData.media.contentUrl = asset.url;
         //   ...
-          return loadRequestData;
-        });
+        return loadRequestData;
     });
+});
 
 
 // // --- 2. PLAYER STATE LISTENERS ---
