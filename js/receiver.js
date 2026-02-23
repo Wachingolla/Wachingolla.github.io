@@ -81,7 +81,7 @@ context.addEventListener(
         log('Sender connected: ' + event.senderId);
         updateSenderUI();
         // showToast('Device connected — ready to cast');
-        // broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
+        broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
     }
 );
 
@@ -111,11 +111,6 @@ context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
             break;
     }
 }); 
-
-// Register namespace before starting
-options.customNamespaces = {};
-options.customNamespaces[CUSTOM_NAMESPACE] = cast.framework.system.MessageType.JSON;
-
 
 // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
 playerManager.setMessageInterceptor(
