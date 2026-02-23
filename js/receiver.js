@@ -32,6 +32,12 @@ const options = new cast.framework.CastReceiverOptions();
 const playbackConfig = new cast.framework.PlaybackConfig();
 const playerManager = context.getPlayerManager();
 
+playbackConfig.manifestRequestHandler = requestInfo => {
+  requestInfo.withCredentials = true;
+};
+
+playbackConfig.autoResumeNumberOfSegments = 1; // Start after 1 segment is loaded
+
 // const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
 
 // --- 0.1 Enable debug logger (optional) ---
@@ -91,11 +97,21 @@ playerManager.setMessageInterceptor(
 );
 
 playerManager.addEventListener(
+  cast.framework.events.EventType.ERROR,
+  (event) => {
+    console.error('Detailed Error Code:', event.detailedErrorCode);
+    console.error('Error Reason:', event.errorReason);
+  }
+);
+
+playerManager.addEventListener(
   cast.framework.events.EventType.MEDIA_STATUS,
   (event) => {
     // Handle status changes here
   }
 );
+
+playerManager.setPlaybackConfig(playbackConfig);
 
 
 // // --- 2. PLAYER STATE LISTENERS ---
