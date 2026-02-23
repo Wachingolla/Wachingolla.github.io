@@ -84,35 +84,23 @@ context.addEventListener(
 
 // // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
 playerManager.setMessageInterceptor(
-cast.framework.messages.MessageType.LOAD, loadRequestData => {
-    const error = new cast.framework.messages.ErrorData(
-                    cast.framework.messages.ErrorType.LOAD_FAILED);
-    if (!loadRequestData.media) {
-    error.reason = cast.framework.messages.ErrorReason.INVALID_PARAM;
-    return error;
-    }
+    cast.framework.messages.MessageType.LOAD, loadRequestData => {
+      
 
-    if (!loadRequestData.media.entity) {
-    return loadRequestData;
-    }
+      if (!loadRequestData.media.entity) {
+        // Copy the value from contentId for legacy reasons if needed
+        loadRequestData.media.entity = loadRequestData.media.contentId;
+      }
 
-    return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
-                                        loadRequestData.credentials)
-    .then(asset => {
-        if (!asset) {
-        throw cast.framework.messages.ErrorReason.INVALID_REQUEST;
-        }
-
-        idleScreen.classList.add('hide');
-        loadRequestData.media.contentUrl = asset.url;
-        loadRequestData.media.metadata = asset.metadata;
-        loadRequestData.media.tracks = asset.tracks;
-        return loadRequestData;
-    }).catch(reason => {
-        error.reason = reason; // cast.framework.messages.ErrorReason
-        return error;
+      return thirdparty.fetchAssetAndAuth(loadRequestData.media.entity,
+                                          loadRequestData.credentials)
+        .then(asset => {
+          loadRequestData.media.contentUrl = asset.url;
+        //   ...
+          return loadRequestData;
+        });
     });
-});
+
 
 // // --- 2. PLAYER STATE LISTENERS ---
 playerManager.addEventListener(
