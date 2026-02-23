@@ -29,13 +29,13 @@ function updateSenderUI() {
     var senders = context.getSenders();
     var count = senders.length;
     if (count > 0) {
-        senderCount.innerHTML = count === 1 ? '1 device connected' : count + ' devices connected';
+        senderCount.innerHTML = count === 1 ? '1 dispositivo conectado' : count + ' dispositivos conectados';
         sendersInfo.classList.add('visible');
-        statusMsg.innerText = 'Connected';
+        statusMsg.innerText = 'Conectado';
     } else {
         sendersInfo.classList.remove('visible');
         senderCount.innerHTML = '';
-        statusMsg.innerText = 'Ready to Cast';
+        statusMsg.innerText = 'Conectando...';
     }
 }
 
