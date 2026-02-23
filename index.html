@@ -245,6 +245,7 @@
 
   <script>
       const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
+      cast.framework.CastReceiverContext.getInstance().start(); 
       
       const context = cast.framework.CastReceiverContext.getInstance();
       const playerManager = context.getPlayerManager();
