@@ -75,30 +75,37 @@ context.addEventListener(cast.framework.system.EventType.READY, () => {
 const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
 
 // --- 1 CONTEXT EVENT LISTENERS OF CONNECTION STATUS ---
-// context.addEventListener(
-//     cast.framework.system.EventType.SENDER_CONNECTED,
-//     function(event) {
-//         log('Sender connected: ' + event.senderId);
-//         updateSenderUI();
-//         // showToast('Device connected — ready to cast');
-//         broadcastStatus('SENDER_CONNECTED', { newSenderId: event.senderId });
-//     }
-// );
+context.addEventListener(
+    cast.framework.system.EventType.SENDER_CONNECTED,
+    function(event) {
+        log('Sender connected: ' + event.senderId);
+        updateSenderUI();
+    }
+);
 
-// context.addEventListener(
-//     cast.framework.system.EventType.SENDER_DISCONNECTED,
-//     function(event) {
-//         log('Sender disconnected: ' + event.senderId);
-//         updateSenderUI();
+context.addEventListener(
+    cast.framework.system.EventType.READY,
+    function(event) {
+        log('Receiver is ready');
+        updateSenderUI();
+        // showToast('Receiver is ready');
+    }
+);
 
-//         if (context.getSenders().length === 0) {
-//             showToast('All devices disconnected');
-//         } else {
-//             showToast('A device disconnected');
-//             broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
-//         }
-//     }
-// );
+context.addEventListener(
+    cast.framework.system.EventType.SENDER_DISCONNECTED,
+    function(event) {
+        log('Sender disconnected: ' + event.senderId);
+        updateSenderUI();
+
+        // if (context.getSenders().length === 0) {
+        //     showToast('All devices disconnected');
+        // } else {
+        //     showToast('A device disconnected');
+        //     broadcastStatus('SENDER_DISCONNECTED', { removedSenderId: event.senderId });
+        // }
+    }
+);
 
 // context.addCustomMessageListener(CUSTOM_NAMESPACE, function(customEvent) {
 //     var data = customEvent.data;
@@ -153,7 +160,7 @@ playerManager.addEventListener(
             case cast.framework.events.EventType.IDLE:
                 idleScreen.classList.add('active');
                 loaderScreen.classList.remove('active');
-                updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
+                updateSenderUI(); 
                 break;
             case cast.framework.events.EventType.BUFFERING:
             case cast.framework.events.EventType.LOADING:
@@ -186,6 +193,6 @@ playerManager.addEventListener(
 
 context.start({
     // playbackConfig: playbackConfig,
-    // playerManager: playerManager,
+    playerManager: playerManager,
     // castDebugLogger: castDebugLogger
 });
