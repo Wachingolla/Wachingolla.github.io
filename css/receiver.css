@@ -57,7 +57,7 @@
             text-align: center;
         }
         
-        .logo-text {
+        /* .logo-text {
             font-size: 3rem;
             font-weight: 800;
             letter-spacing: 4px;
@@ -65,6 +65,13 @@
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+        } */
+
+        .logo-image {
+            width: 120px;
+            height: 120px;
+            background: url('../assets/logo.png') no-repeat center/contain;
+            filter: drop-shadow(0 0 10px var(--primary-color));
         }
 
         /* Status Indicator Pill */
