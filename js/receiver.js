@@ -1,5 +1,3 @@
-const context = cast.framework.CastReceiverContext.getInstance();
-const playerManager = context.getPlayerManager();
 
 // // UI References
 const idleScreen = document.getElementById('idle-screen');
@@ -9,6 +7,17 @@ const debugLog = document.getElementById('debug-log');
 const sendersInfo = document.getElementById('senders-info');
 const senderCount = document.getElementById('sender-count');
 const toastEl = document.getElementById('toast');
+
+// --- 0. INITIALIZATION ---
+const context = cast.framework.CastReceiverContext.getInstance();
+const playerManager = context.getPlayerManager();
+const playbackConfig = new cast.framework.PlaybackConfig();
+
+
+// Example of modifying the manifest request to include credentials (e.g. cookies) for CORS requests
+playbackConfig.manifestRequestHandler = requestInfo => {
+  requestInfo.withCredentials = true;
+};
 
 playerManager.setMessageInterceptor(
     cast.framework.messages.MessageType.LOAD, loadRequestData => {
@@ -61,7 +70,11 @@ context.addEventListener(
 
 playerManager.setSupportedMediaCommands(cast.framework.messages.Command.SEEK |
 cast.framework.messages.Command.PAUSE);
-context.start();
+
+context.start({
+    playbackConfig: playbackConfig,
+    playerManager: playerManager
+});
 
 
     // const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
@@ -188,11 +201,7 @@ context.start();
                 statusMsg.innerText = data.message || '';
                 break;
         }
-    });
-
-    // --- 4. START THE ENGINE (ONLY ONCE!) ---
-    var options = new cast.framework.CastReceiverOptions();
-    options.maxInactivity = 3600; 
+    }); 
 
     // Register namespace before starting
     options.customNamespaces = {};
