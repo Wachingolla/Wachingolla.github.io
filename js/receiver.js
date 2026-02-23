@@ -29,46 +29,46 @@ function showToast(message, duration) {
 const context = cast.framework.CastReceiverContext.getInstance();
 const playerManager = context.getPlayerManager();
 const playbackConfig = new cast.framework.PlaybackConfig();
-const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
+// const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
 
 // --- 0.1 Enable debug logger (optional) ---
-context.addEventListener(cast.framework.system.EventType.READY, () => {
-    if (!castDebugLogger.debugOverlayElement_) {
-        // Enable debug logger and show a 'DEBUG MODE' overlay at top left corner.
-        castDebugLogger.setEnabled(true);
-    }
-});
+// context.addEventListener(cast.framework.system.EventType.READY, () => {
+//     if (!castDebugLogger.debugOverlayElement_) {
+//         // Enable debug logger and show a 'DEBUG MODE' overlay at top left corner.
+//         castDebugLogger.setEnabled(true);
+//     }
+// });
 
 // --- 0.2 Define a custom namespace for app-specific messages ---
 const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
 
 // --- 1 CONTEXT EVENT LISTENERS OF CONNECTION STATUS ---
-context.addEventListener(
-    cast.framework.system.EventType.SENDER_CONNECTED,
-    function(event) {
-        log('Sender connected: ' + event.senderId);
-        statusMsg.innerText = 'Conectado';
-    }
-);
+// context.addEventListener(
+//     cast.framework.system.EventType.SENDER_CONNECTED,
+//     function(event) {
+//         log('Sender connected: ' + event.senderId);
+//         statusMsg.innerText = 'Conectado';
+//     }
+// );
 
-context.addEventListener(
-    cast.framework.system.EventType.READY,
-    function(event) {
-        log('Receiver is ready');
-        statusMsg.innerText = 'Listo para transmitir';
-    }
-);
+// context.addEventListener(
+//     cast.framework.system.EventType.READY,
+//     function(event) {
+//         log('Receiver is ready');
+//         statusMsg.innerText = 'Listo para transmitir';
+//     }
+// );
 
-context.addEventListener(
-    cast.framework.system.EventType.SENDER_DISCONNECTED,
-    function(event) {
-        log('Sender disconnected: ' + event.senderId);
-        if (context.getSenders().length === 0) {
-            log('All senders disconnected, stopping app');
-            statusMsg.innerText = 'Esperando conexión...';
-        }
-    }
-);
+// context.addEventListener(
+//     cast.framework.system.EventType.SENDER_DISCONNECTED,
+//     function(event) {
+//         log('Sender disconnected: ' + event.senderId);
+//         if (context.getSenders().length === 0) {
+//             log('All senders disconnected, stopping app');
+//             statusMsg.innerText = 'Esperando conexión...';
+//         }
+//     }
+// );
 
 
 // // --- 2 PLAYER MANAGER INTERCEPTORS AND LISTENERS ---
@@ -92,32 +92,32 @@ playerManager.setMessageInterceptor(
 
 
 // // --- 2. PLAYER STATE LISTENERS ---
-playerManager.addEventListener(
-    cast.framework.events.EventType.MEDIA_STATUS,
-    function(event) {
-        var state = event.value;
-        switch(state) {
-            case cast.framework.events.EventType.IDLE:
-                idleScreen.classList.remove('hide');
-                loaderScreen.classList.add('hide');
-                updateSenderUI(); 
-                break;
-            case cast.framework.events.EventType.BUFFERING:
-            case cast.framework.events.EventType.LOADING:
-                idleScreen.classList.remove('hide');
-                loaderScreen.classList.add('active');
-                break;
-            case cast.framework.events.EventType.PLAYING:
-                idleScreen.classList.add('hide');
-                loaderScreen.classList.remove('active');
-                break;
-            case cast.framework.events.EventType.PAUSED:
-                loaderScreen.classList.remove('active');
-                break;
-        }
-        broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
-    }
-);
+// playerManager.addEventListener(
+//     cast.framework.events.EventType.MEDIA_STATUS,
+//     function(event) {
+//         var state = event.value;
+//         switch(state) {
+//             case cast.framework.events.EventType.IDLE:
+//                 idleScreen.classList.remove('hide');
+//                 loaderScreen.classList.add('hide');
+//                 updateSenderUI(); 
+//                 break;
+//             case cast.framework.events.EventType.BUFFERING:
+//             case cast.framework.events.EventType.LOADING:
+//                 idleScreen.classList.remove('hide');
+//                 loaderScreen.classList.add('active');
+//                 break;
+//             case cast.framework.events.EventType.PLAYING:
+//                 idleScreen.classList.add('hide');
+//                 loaderScreen.classList.remove('active');
+//                 break;
+//             case cast.framework.events.EventType.PAUSED:
+//                 loaderScreen.classList.remove('active');
+//                 break;
+//         }
+//         broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
+//     }
+// );
 
 // playerManager.setMessageInterceptor(
 //     cast.framework.messages.MessageType.LOAD,
