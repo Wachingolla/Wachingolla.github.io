@@ -145,34 +145,34 @@ const CUSTOM_NAMESPACE = 'urn:x-cast:com.fossynet.presumiendomx';
 // });
 
 // // --- 2. PLAYER STATE LISTENERS ---
-// playerManager.addEventListener(
-//     cast.framework.events.EventType.PLAYER_STATE_CHANGED,
-//     function(event) {
-//         var state = event.value;
-//         log('State: ' + state);
+playerManager.addEventListener(
+    cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+    function(event) {
+        var state = event.value;
+        log('State: ' + state);
 
-//         switch(state) {
-//             case cast.framework.events.PlayerState.IDLE:
-//                 idleScreen.classList.add('active');
-//                 loaderScreen.classList.remove('active');
-//                 updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
-//                 break;
-//             case cast.framework.events.PlayerState.BUFFERING:
-//             case cast.framework.events.PlayerState.LOADING:
-//                 idleScreen.classList.remove('active');
-//                 loaderScreen.classList.add('active');
-//                 break;
-//             case cast.framework.events.PlayerState.PLAYING:
-//                 idleScreen.classList.remove('active');
-//                 loaderScreen.classList.remove('active');
-//                 break;
-//             case cast.framework.events.PlayerState.PAUSED:
-//                 loaderScreen.classList.remove('active');
-//                 break;
-//         }
-//         broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
-//     }
-// );
+        switch(state) {
+            case cast.framework.events.PlayerState.IDLE:
+                idleScreen.classList.add('active');
+                loaderScreen.classList.remove('active');
+                updateSenderUI(); // Re-evaluates if we are "Connected" or "Ready"
+                break;
+            case cast.framework.events.PlayerState.BUFFERING:
+            case cast.framework.events.PlayerState.LOADING:
+                idleScreen.classList.remove('active');
+                loaderScreen.classList.add('active');
+                break;
+            case cast.framework.events.PlayerState.PLAYING:
+                idleScreen.classList.remove('active');
+                loaderScreen.classList.remove('active');
+                break;
+            case cast.framework.events.PlayerState.PAUSED:
+                loaderScreen.classList.remove('active');
+                break;
+        }
+        broadcastStatus('PLAYER_STATE_CHANGED', { playerState: state });
+    }
+);
 
 // playerManager.setMessageInterceptor(
 //     cast.framework.messages.MessageType.LOAD,
