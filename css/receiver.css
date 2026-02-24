@@ -51,9 +51,9 @@
             visibility: visible;
         }
 
-        #loader-screen.active {
-            opacity: 1;
-            visibility: visible;
+        #loader-screen.hide {
+            opacity: 0;
+            visibility: hidden;
         }
 
         /* Logo Area */

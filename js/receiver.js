@@ -90,6 +90,10 @@ playerManager.setMessageInterceptor(
         cast.framework.messages.ErrorType.LOAD_FAILED);
     }
 
+    loaderScreen.classList.remove('hide');
+    idleScreen.classList.remove('active');
+
+
     // 2. Modify the data (e.g., fetching a real URL from an ID)
     // You can return the modified data or a Promise that resolves with it
     return loadRequestData; 
