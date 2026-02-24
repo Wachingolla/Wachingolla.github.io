@@ -1,5 +1,5 @@
 .background {
-  background: center no-repeat url( );
+  background: center no-repeat url(https://github.com/Wachingolla/Wachingolla.github.io/blob/main/assets/background.jpg?raw=true);
 }
 
 .logo {
@@ -11,10 +11,10 @@
 }
 
 .splash {
-  background-image: url(splash.png);
+  background-image: url(https://github.com/Wachingolla/Wachingolla.github.io/blob/main/assets/splash-screen_hd.jpg?raw=true);
 }
 
 .watermark {
-  background-image: url(watermark.png);
+  background-image: url(https://github.com/Wachingolla/Wachingolla.github.io/blob/main/assets/watermark.png?raw=true);
   background-size: 57px 57px;
 }
