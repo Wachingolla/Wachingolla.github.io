@@ -46,14 +46,14 @@
             transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
         }
 
-        #idle-screen.hide {
-            opacity: 0;
-            visibility: hidden;
+        #idle-screen.active {
+            opacity: 1;
+            visibility: visible;
         }
 
-        #loader-screen.hide {
-            opacity: 0;
-            visibility: hidden;
+        #loader-screen.active {
+            opacity: 1;
+            visibility: visible;
         }
 
         /* Logo Area */
